@@ -22,21 +22,38 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # AGP 8.7.3 and sourceCompatibility=VERSION_17 both require JDK 17.
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      # ubuntu-latest already ships an Android SDK with cmdline-tools on PATH, so
-      # android-actions/setup-android is not needed. That action has been the
-      # flaky step; using sdkmanager directly removes it from the dependency chain.
-      - name: Accept SDK licences
+      # ubuntu-24.04 ships an Android SDK but does NOT put cmdline-tools on PATH,
+      # so a bare `sdkmanager` call dies with exit 127. Locate it explicitly and
+      # fail loudly here rather than letting a missing tool surface later as a
+      # confusing Gradle error.
+      - name: Locate cmdline-tools
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
+          set -euo pipefail
+          for root in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" /usr/local/lib/android/sdk; do
+            [ -n "$root" ] || continue
+            if [ -x "$root/cmdline-tools/latest/bin/sdkmanager" ]; then
+              echo "Found sdkmanager under $root"
+              echo "$root" >> "$GITHUB_ENV"
+              echo "$root/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+              exit 0
+            fi
+          done
+          echo "::error::sdkmanager not found; searched ANDROID_SDK_ROOT, ANDROID_HOME, /usr/local/lib/android/sdk"
+          exit 1
+
+      # No `|| true` here. An earlier version had it, which silently turned
+      # "sdkmanager: command not found" into a green step and hid the real fault.
+      - name: Accept SDK licences
+        run: yes | sdkmanager --licenses > /dev/null
 
       - name: Install SDK platform and build-tools
         run: |
