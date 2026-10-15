@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Delish Settings</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* No grey tap overlay, no text selection, no focus ring on the WebView chrome.
+ tap-highlight-color inherits, so this covers every row/card/pill below. */
+html{
+ -webkit-tap-highlight-color:transparent;tap-highlight-color:transparent;
+ -webkit-text-size-adjust:100%;text-size-adjust:100%;
+}
+button,a,label,.row,.mcard,.pill,.sw{-webkit-user-select:none;user-select:none}
+button{outline:none}
+:root{
+ --bg:#080A0F; --surface:#12161E; --surface-2:#1B212C;
+ --line:rgba(255,255,255,.08);
+ --text:#E9EDF3; --muted:#8B95A5;
+ --brand:#00D6A0; --brand-2:#00A87C; --brand-soft:rgba(0,214,160,.12);
+ --danger:#FF5252; --warn:#FFB020;
+ --r-lg:20px; --r-md:13px; --r-full:999px;
+}
+html,body{height:100%}
+body{
+ margin:0;font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+ background:radial-gradient(1200px 700px at 50% -10%,#12262E 0%,transparent 55%),#05070A;
+ color:var(--text);display:flex;align-items:center;justify-content:center;
+ padding:20px;-webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.phone{
+ position:relative;width:min(390px,100%);aspect-ratio:9/16;max-height:calc(100vh - 40px);
+ background:var(--bg);border-radius:40px;border:1px solid rgba(255,255,255,.1);
+ box-shadow:0 34px 100px rgba(0,0,0,.75),0 0 0 8px #14171D;
+ overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
+}
+.phone::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+ width:118px;height:24px;background:var(--bg);border-radius:0 0 16px 16px;z-index:60}
+.phone::after{content:"";position:absolute;bottom:7px;left:50%;transform:translateX(-50%);
+ width:112px;height:4px;background:rgba(255,255,255,.3);border-radius:var(--r-full);z-index:60}
+.statusbar{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;
+ justify-content:space-between;padding:0 22px;font-size:11.5px;font-weight:600;color:var(--muted);
+ z-index:50;pointer-events:none}
+.sb-r{display:flex;gap:5px;align-items:center}
+.sb-r i{display:block;width:15px;height:9px;border:1.4px solid var(--muted);border-radius:2.5px;position:relative}
+.sb-r i::after{content:"";position:absolute;inset:1.4px;background:var(--muted);border-radius:1px}
+
+/* header */
+.hdr{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:16px 20px 12px;
+ background:linear-gradient(180deg,var(--bg),rgba(8,10,15,0))}
+.back{width:32px;height:32px;border:none;background:none;color:var(--text);cursor:pointer;
+ display:grid;place-items:center;border-radius:var(--r-full);text-decoration:none;position:relative;z-index:51}
+.back:hover{background:var(--surface-2)}
+.back svg{width:20px;height:20px;fill:currentColor}
+.hdr b{font-size:16px;font-weight:650}
+
+.body{flex:1;min-height:0;overflow-y:auto;padding:0 20px 16px}
+.body::-webkit-scrollbar{width:0}
+
+/* section */
+.sec{margin-bottom:22px}
+.sec-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+ letter-spacing:1.1px;margin-bottom:9px;padding-left:4px}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+ overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;
+ background:none;border:none;color:var(--text);font:inherit;text-align:left;cursor:pointer;
+ border-bottom:1px solid var(--line);transition:background .15s}
+.row:last-child{border-bottom:none}
+.row:hover{background:var(--surface-2)}
+.row.static{cursor:default}
+.row.static:hover{background:none}
+.row .ic{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;
+ background:var(--surface-2);color:var(--muted)}
+.row .ic svg{width:15px;height:15px;fill:currentColor}
+.row .ic.hl{background:var(--brand-soft);color:var(--brand)}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:13.5px;font-weight:600;margin-bottom:2px}
+.row .tx span{font-size:11px;color:var(--muted);line-height:1.4;display:block}
+.row .val{font-size:12px;color:var(--muted);flex-shrink:0;font-weight:600}
+.row .chev{width:16px;height:16px;flex-shrink:0;color:var(--muted)}
+.row .chev svg{width:16px;height:16px;fill:currentColor}
+.pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:var(--r-full);
+ background:var(--brand-soft);color:var(--brand);flex-shrink:0}
+.pill.warn{background:rgba(255,176,32,.14);color:var(--warn)}
+
+/* model cards */
+.mcards{display:flex;flex-direction:column;gap:10px}
+.mcard{padding:15px;border-radius:var(--r-lg);cursor:pointer;text-align:left;
+ background:var(--surface);border:1.5px solid var(--line);color:var(--text);font:inherit;
+ transition:border-color .2s,background .2s}
+.mcard:hover{border-color:rgba(0,214,160,.4)}
+.mcard.on{border-color:var(--brand);background:var(--brand-soft)}
+.mcard-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.mcard-top b{flex:1;font-size:14px;font-weight:650}
+.rad{width:18px;height:18px;border-radius:var(--r-full);border:2px solid var(--muted);
+ flex-shrink:0;display:grid;place-items:center}
+.mcard.on .rad{border-color:var(--brand)}
+.mcard.on .rad::after{content:"";width:8px;height:8px;border-radius:var(--r-full);background:var(--brand)}
+.mcard p{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+.mstats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{font-size:10px;font-weight:650;padding:4px 9px;border-radius:var(--r-full);
+ background:var(--surface-2);color:var(--muted)}
+.stat.ok{background:var(--brand-soft);color:var(--brand)}
+.stat.hot{background:rgba(255,176,32,.14);color:var(--warn)}
+.dlbar{height:4px;border-radius:var(--r-full);background:rgba(255,255,255,.08);
+ overflow:hidden;margin-top:11px;display:none}
+.dlbar.on{display:block}
+.dlbar i{display:block;height:100%;width:0;border-radius:var(--r-full);
+ background:linear-gradient(90deg,var(--brand),var(--brand-2));transition:width .2s}
+.dltxt{font-size:10px;color:var(--brand);margin-top:6px;display:none}
+.dltxt.on{display:block}
+
+/* storage */
+.storage{padding:15px 16px}
+.st-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.st-row b{font-size:12.5px;font-weight:600}
+.st-row i{font-style:normal;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.st-bar{height:8px;border-radius:var(--r-full);background:rgba(255,255,255,.07);
+ overflow:hidden;display:flex}
+.st-bar i{height:100%}
+.st-bar .m{background:linear-gradient(90deg,var(--brand),var(--brand-2))}
+.st-bar .s{background:#3b82f6}
+.st-bar .t{background:#a855f7}
+.st-legend{display:flex;flex-direction:column;gap:6px;margin-top:13px}
+.st-legend div{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.st-legend i{width:8px;height:8px;border-radius:2.5px;flex-shrink:0}
+
+/* speed modes */
+.modebar{display:flex;gap:6px;padding:0 12px 11px}
+.mchip{flex:1;padding:9px 0;border-radius:12px;cursor:pointer;font:inherit;
+ font-size:11.5px;font-weight:650;transition:transform .14s,background .2s,color .2s;
+ border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.mchip:active{transform:scale(.96)}
+.mchip.on{background:rgba(0,214,160,.13);border-color:rgba(0,214,160,.4);color:var(--brand)}
+
+/* gender chips */
+.genderbar{display:flex;gap:6px;padding:0 12px 11px}
+.gchip{flex:1;padding:8px 0;border-radius:12px;cursor:pointer;font:inherit;
+  font-size:11.5px;font-weight:650;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--muted)}
+.gchip:active{transform:scale(.96)}
+.gchip.on{background:rgba(0,214,160,.13);border-color:rgba(0,214,160,.4);color:var(--brand)}
+.tunehint{padding:0 14px 12px;font-family:Consolas,Menlo,monospace;
+ font-size:9px;color:var(--muted);letter-spacing:-.1px}
+
+/* collapsible diagnostics */
+.collapser{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+ padding:12px 14px;background:none;border:none;color:var(--text);font:inherit;cursor:pointer}
+.collapser .tx{flex:1;min-width:0}
+.collapser .cv{width:18px;height:18px;flex-shrink:0;color:var(--muted);
+ transition:transform .26s cubic-bezier(.22,.85,.3,1)}
+.collapser[aria-expanded="true"] .cv{transform:rotate(180deg)}
+.dbody{display:none;border-top:1px solid var(--line)}
+.dbody.on{display:block}
+
+/* diagnostics log view */
+.logbox{
+ margin:12px;padding:11px 12px;border-radius:var(--r-md);
+ background:#0A0D12;border:1px solid var(--line);
+ font-family:Consolas,Menlo,monospace;font-size:9.5px;line-height:1.55;
+ color:#9FD8C4;max-height:230px;overflow-y:auto;white-space:pre-wrap;
+ word-break:break-all;
+}
+.logbox::-webkit-scrollbar{width:0}
+.logbar{border-top:1px solid var(--line)}
+.logbar .row:last-child{border-bottom:none}
+
+/* switch */
+.sw{width:42px;height:24px;border-radius:var(--r-full);background:rgba(255,255,255,.12);
+ position:relative;flex-shrink:0;cursor:pointer;transition:background .22s;border:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:var(--r-full);
+ background:#fff;transition:transform .22s}
+.sw.on{background:var(--brand)}
+.sw.on::after{transform:translateX(18px)}
+
+.foot{flex-shrink:0;padding:12px 20px 26px;border-top:1px solid var(--line);text-align:center}
+.foot .tiny{font-size:10.5px;color:var(--muted);line-height:1.55}
+
+@media(max-aspect-ratio:9/16),(max-width:420px){
+ body{padding:0;display:block;background:var(--bg)}
+ .phone{width:100%;max-height:none;height:100vh;height:100dvh;aspect-ratio:auto;
+ border-radius:0;border:none;box-shadow:none}
+ .phone::before,.phone::after{display:none}
+ .statusbar{display:none}
+ .hdr{padding-top:var(--sat,env(safe-area-inset-top,0px))}
+ .foot{padding-bottom:max(26px,env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+
+<div class="phone">
+ <div class="statusbar"><span>9:41</span><span class="sb-r"><i></i></span></div>
+
+ <div class="hdr">
+ <a class="back" href="index.html" aria-label="Back">
+ <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+ </a>
+ <b>Settings</b>
+ </div>
+
+ <div class="body">
+
+ <!-- MODEL -->
+ <div class="sec">
+ <div class="sec-t">AI Model</div>
+ <div class="mcards" id="models"></div>
+ </div>
+
+ <!-- VOICE -->
+ <div class="sec">
+ <div class="sec-t">Voice</div>
+ <div class="card">
+ <button class="row" onclick="showVoices()">
+ <div class="ic hl"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02z"/></svg></div>
+ <div class="tx"><b>Voice</b><span id="voiceName">System voice</span></div>
+ </button>
+ <div class="genderbar">
+ <button class="gchip on" id="gMale">Male</button>
+ <button class="gchip" id="gFemale">Female</button>
+ </div>
+ <button class="row" onclick="testVoice()">
+ <div class="ic"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+ <div class="tx"><b>Test</b><span>Play a sample</span></div>
+ </button>
+ </div>
+ <div class="st-legend">
+ <div><i style="background:var(--brand)"></i>Voice output runs in the voice loop only, not in chat.</div>
+ </div>
+ </div>
+
+ <!-- SPEED -->
+ <div class="sec">
+ <div class="sec-t">Speed</div>
+ <div class="card" id="speedCard">
+ <div class="tx" style="padding:11px 14px 4px"><b>Reply length</b></div>
+ <div class="modebar">
+ <button class="mchip" id="modeFast">Fast</button>
+ <button class="mchip on" id="modeBalanced">Balanced</button>
+ <button class="mchip" id="modeFull">Full</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- DIAGNOSTICS collapsed by default; nobody needs a wall of log text
+ unless something is already going wrong. -->
+ <div class="sec">
+ <div class="card">
+ <button class="collapser" id="diagToggle" aria-expanded="false">
+ <div class="tx"><b>Diagnostics</b><span id="diagHint">Log, device info, export</span></div>
+ <svg class="cv" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+ </button>
+ <div class="dbody" id="diagBody">
+ <div class="logbox" id="logBox">Loading log</div>
+ <div class="logbar">
+ <button class="row" onclick="refreshLog()">
+ <div class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0012 4a8 8 0 108 8h-2a6 6 0 11-6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></div>
+ <div class="tx"><b>Refresh</b><span>Reload the log view</span></div>
+ </button>
+ <button class="row" onclick="doCopy()">
+ <div class="ic hl"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg></div>
+ <div class="tx"><b>Copy full log</b><span>Paste it anywhere</span></div>
+ </button>
+ <button class="row" onclick="doSave()">
+ <div class="ic hl"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></div>
+ <div class="tx"><b>Save as .txt</b><span>Write to your Downloads folder</span></div>
+ </button>
+ <button class="row" onclick="clearLog()">
+ <div class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+ <div class="tx"><b>Clear</b><span>Start a fresh log</span></div>
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ABOUT -->
+ <div class="sec">
+ <div class="sec-t">About</div>
+ <div class="card">
+ <div class="row static">
+ <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></div>
+ <div class="tx"><b>Offline</b><span>No internet, no cloud, no tracking</span></div>
+ <div class="pill">100%</div>
+ </div>
+ <div class="row static">
+ <div class="ic"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>
+ <div class="tx"><b>Delish</b><span>Version 1.0.0</span></div>
+ </div>
+ <button class="row" onclick="confirmDel()">
+ <div class="ic" style="color:var(--danger)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+ <div class="tx"><b>Clear all data</b><span>Delete models and conversations</span></div>
+ </button>
+ </div>
+ </div>
+
+ </div>
+
+ <div class="foot">
+ <div class="tiny"></div>
+ </div>
+</div>
+
+<script src="bridge.js"></script>
+<script>
+const MODELS={
+ mini:{name:'Mini',sub:'Qwen2.5-0.5B INT8',desc:'The default. Proven to load on this runtime and light enough for a 4GB phone replies come quickly without stalling the rest of the system.',
+ size:'521 MB',ram:'~1.1 GB',stats:[['Fast','ok'],['4GB safe','ok']]},
+ pro:{name:'Pro',sub:'Qwen2.5-1.5B INT8',desc:'Noticeably smarter: better phrasing, holds more of the conversation. Much heavier though a 4GB phone will feel the strain.',
+ size:'1.5 GB',ram:'~2.4 GB',stats:[['Smarter','ok'],['Needs 6GB+','hot']]}
+};
+let cur = 'mini', dl = null, stt = 0;
+/* reflect the real installed tier when running in the app */
+if (window.DelishBridge && window.DelishBridge.hasNative) {
+ const _t = window.DelishBridge.modelTier();
+ if (MODELS[_t]) { cur = _t; MODELS[_t].installed = true; }
+ MODELS.mini.installed = MODELS.mini.installed || (window.DelishBridge.hasNative && _t !== 'pro');
+}
+
+function render(){
+ document.getElementById('models').innerHTML=Object.keys(MODELS).map(k=>{
+ const m=MODELS[k],on=k===cur;
+ const bar=dl&&dl.key===k?`<div class="dlbar on"><i style="width:${dl.p}%"></i></div>
+ <div class="dltxt on">Downloading ${dl.p.toFixed(0)}%</div>`:'';
+ const badge=on?'<span class="pill">Active</span>':
+ (k==='pro'?'<span class="pill warn">Extra download</span>':'');
+ return `<button class="mcard ${on?'on':''}" onclick="pick('${k}')">
+ <div class="mcard-top"><b>${m.name}</b><div class="rad"></div>${badge}</div>
+ <p>${m.desc}</p>
+ <div class="mstats">
+ <span class="stat">${m.size}</span>
+ <span class="stat">${m.ram} RAM</span>
+ ${m.stats.map(s=>`<span class="stat ${s[1]}">${s[0]}</span>`).join('')}
+ </div>${bar}</button>`;
+ }).join('');
+}
+
+function pick(k){
+ if(k===cur)return;
+ if(!MODELS[k].installed){ startDl(k); return; }
+ cur=k;
+ if (window.DelishBridge && window.DelishBridge.hasNative) {
+ window.DelishBridge.setTier(k === 'pro'); // native maps mini->false, safe->false too
+ }
+ render();
+}
+
+/* Kick off the native download when running in the app; simulate in a browser. */
+function startDl(key){
+ const mini = key === 'mini';
+ if (window.DelishBridge && window.DelishBridge.hasNative) {
+ window.DelishBridge.clearDownloadError();
+ const off = window.DelishBridge.on('download', p => {
+ if (typeof p.percent === 'number') {
+ dl = { key: key, p: p.percent };
+ render();
+ }
+ if (p.done) {
+ dl = null; MODELS[key].installed = true; cur = key; render();
+ renderSpeed();
+ }
+ });
+ const offErr = window.DelishBridge.on('error', p => {
+ // keep `dl` set so the card keeps its progress bar and can be tapped again
+ console.error('[Delish] download failed', p && p.message);
+ });
+ const offReady = window.DelishBridge.on('modelReady', () => {
+ off(); offErr(); offReady();
+ renderSpeed();
+ });
+ window.DelishBridge.requestDownload(key);
+ dl = { key: key, p: 0 };
+ render();
+ return;
+ }
+
+ /* browser preview: simulate */
+ dl={key,p:0};
+ render();
+ const t=setInterval(()=>{
+ dl.p+=Math.random()*7;
+ if(dl.p>=100){
+ dl=null;MODELS[key].installed=true;cur=key;render();
+ clearInterval(t);
+ }else{
+ render();
+ }
+ },180);
+}
+
+const B2 = window.DelishBridge;
+const HAS = !!(B2 && B2.hasNative);
+
+/* -- speed modes --
+ The numbers come from native, not from this file, so Settings and the engine
+ can never drift apart. */
+let MODES = [
+ {key:'fast', label:'Fast', blurb:'Short answers, quickest reply.', temperature:0.4, topP:0.7, topK:20, maxTokens:256},
+ {key:'balanced', label:'Balanced', blurb:'Everyday replies.', temperature:0.7, topP:0.9, topK:40, maxTokens:640},
+ {key:'full', label:'Full', blurb:'Longest, most detailed.', temperature:0.8, topP:0.95,topK:64, maxTokens:1280}
+];
+let curMode = 'balanced';
+
+function renderSpeed(){
+ const m = MODES.find(x => x.key === curMode) || MODES[1];
+ const lab = document.getElementById('speedLabel');
+ const bl = document.getElementById('speedBlurb');
+ const hint= document.getElementById('tuneHint');
+ if (lab) lab.textContent = m.label;
+ if (bl) bl.textContent = m.blurb;
+ if (hint) hint.textContent =
+ 'temp ' + m.temperature.toFixed(2) + ' topP ' + m.topP.toFixed(2) +
+ ' topK ' + m.topK + ' max ' + m.maxTokens + ' tok';
+ ['fast','balanced','full'].forEach(k => {
+ const el = document.getElementById('mode' + k.charAt(0).toUpperCase() + k.slice(1));
+ if (el) el.classList.toggle('on', k === curMode);
+ });
+}
+
+function pickMode(key){
+ if (key === curMode) return;
+ curMode = key;
+ renderSpeed();
+ if (HAS) B2.setSpeedMode(key);
+}
+
+function initSpeed(){
+ if (HAS){
+ const list = B2.speedModeInfo();
+ if (list && list.length) MODES = list;
+ curMode = B2.speedMode() || curMode;
+ }
+ renderSpeed();
+ const ids = {fast:'modeFast', balanced:'modeBalanced', full:'modeFull'};
+ Object.keys(ids).forEach(k => { const el = document.getElementById(ids[k]); if (el) el.onclick = () => pickMode(k); });
+}
+
+/* voice gender: picks a system voice that best matches Male/Female */
+let curGender = 'male';
+function pickGender(g){
+ if (g === curGender) return;
+ curGender = g;
+ document.getElementById('gMale').classList.toggle('on', g === 'male');
+ document.getElementById('gFemale').classList.toggle('on', g === 'female');
+ if (HAS) B2.setGender(g);
+ else document.getElementById('voiceName').textContent = (g === 'male' ? 'Male' : 'Female') + ' voice';
+}
+function initGender(){
+ const m = document.getElementById('gMale'), f = document.getElementById('gFemale');
+ if (m) m.onclick = () => pickGender('male');
+ if (f) f.onclick = () => pickGender('female');
+}
+
+/* -- collapsible diagnostics -- */
+function initDiag(){
+ const t = document.getElementById('diagToggle');
+ const b = document.getElementById('diagBody');
+ if (!t || !b) return;
+ t.onclick = () => {
+ const open = t.getAttribute('aria-expanded') === 'true';
+ t.setAttribute('aria-expanded', String(!open));
+ b.classList.toggle('on', !open);
+ if (!open) refreshLog();
+ };
+}
+
+/* switches: reflect real state and push it to native */
+const PREFS='delish_ui';
+function pref(k,dv){ try{ return localStorage.getItem(PREFS+'.'+k) ?? dv; }catch(e){ return dv; } }
+function setPref(k,v){ try{ localStorage.setItem(PREFS+'.'+k, v); }catch(e){} }
+
+function toggleSw(el, key){
+ const on = !el.classList.contains('on');
+ el.classList.toggle('on', on);
+ setPref(key, on ? '1' : '0');
+ if (!HAS) return;
+ if (key==='autoContinue') B2.setAutoContinue(on);
+ /* keepPreview is a UI-only pref index.html reads it on load */
+}
+
+function syncSwitches(){
+ const ac = pref('autoContinue','1') === '1';
+ const kp = pref('keepPreview','0') === '1';
+ const b=document.getElementById('swAutoContinue'), c=document.getElementById('swKeepPreview');
+ if(b) b.classList.toggle('on', ac);
+ if(c) c.classList.toggle('on', kp);
+ if (HAS) { B2.setAutoContinue(ac); }
+}
+
+/* voices */
+function showVoices(){
+ if (!HAS) { alert('Voice list is only available in the app.'); return; }
+ const list = B2.listVoices();
+ if (!list.length) {
+ alert('No offline voice installed.\n\nDownload a voice pack:\nSettings System Languages & input Text-to-speech install voice data');
+ return;
+ }
+ alert(list.slice(0,12).map(v => ' ' + v.name + ' (' + v.locale + ')').join('\n') +
+ (list.length > 12 ? '\n\nand ' + (list.length-12) + ' more' : ''));
+}
+function testVoice(){
+ if (HAS) { B2.speakSample(); return; }
+ alert('Voice preview only works in the app.');
+}
+
+/* diagnostics */
+function refreshLog(){
+ const box=document.getElementById('logBox');
+ if (!box) return;
+ if (!HAS) { box.textContent='Log capture is only available in the app.'; return; }
+ const txt = B2.getLogs(70) || '';
+ box.textContent = txt.trim() ? txt : '(empty nothing logged yet)';
+ box.scrollTop = box.scrollHeight;
+}
+function doCopy(){
+ if (!HAS) { alert('Log capture is only available in the app.'); return; }
+ boxCopied(B2.copyLogs());
+}
+function boxCopied(ok){
+ const box=document.getElementById('logBox');
+ if (ok) {
+ box.textContent = ' Copied to clipboard. Paste it here.\n\n' +
+ '(Tap Refresh to pull fresh lines the clipboard keeps the whole session.)';
+ box.scrollTop = 0;
+ } else {
+ box.textContent = ' Copy failed no clipboard available.';
+ }
+}
+function clearLog(){
+ if (!HAS) return;
+ B2.clearLogs();
+ refreshLog();
+}
+function doSave(){
+ const box=document.getElementById('logBox');
+ if (!HAS) { box.textContent='Log capture is only available in the app.'; return; }
+ box.textContent = 'Saving';
+ const where = B2.saveLogs();
+ box.textContent = (where && where.indexOf('ERROR') === 0)
+ ? ' ' + where
+ : ' Saved to: ' + where + '\n\nOpen it from Files Downloads, or tap Copy to paste the text directly.';
+ box.scrollTop = 0;
+}
+
+function sw(el){
+ el.classList.toggle('on');
+}
+
+function confirmDel(){
+ if (!confirm('Clear everything? This will restart the download setup.')) return;
+ if (window.DelishBridge && window.DelishBridge.hasNative) {
+ window.DelishBridge.clearAllData();
+ // brief pause so native deletes the files before we navigate
+ setTimeout(function(){ location.replace('onboarding.html'); }, 350);
+ } else {
+ location.href='onboarding.html';
+ }
+}
+
+render();
+syncSwitches();
+initSpeed();
+initDiag();
+initGender();
+</script>
+</body>
+</html>

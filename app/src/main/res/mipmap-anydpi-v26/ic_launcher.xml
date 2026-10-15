@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- gradient background matches the in-app mark exactly -->
+    <background android:drawable="@drawable/ic_launcher_bg" />
+    <!-- 5-bar EQ mark, centred in the adaptive safe zone -->
+    <foreground android:drawable="@drawable/ic_launcher_fg" />
+    <!-- themed icons (Android 13+) -->
+    <monochrome android:drawable="@drawable/ic_launcher_mono" />
+</adaptive-icon>

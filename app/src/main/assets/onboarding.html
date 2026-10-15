@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Delish</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* No grey tap overlay on the retry button — tap-highlight-color inherits. */
+html{
+  -webkit-tap-highlight-color:transparent;tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
+}
+button{-webkit-user-select:none;user-select:none;outline:none}
+:root{
+  --bg:#080A0F; --text:#E9EDF3; --muted:#8B95A5;
+  --brand:#00D6A0; --brand-2:#00A87C;
+  --danger:#FF5252; --warn:#FFB020;
+  --r-full:999px;
+}
+html,body{height:100%}
+body{
+  margin:0;font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  background:#05070A;color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.phone{
+  position:relative;width:100%;height:100vh;height:100dvh;
+  background:radial-gradient(1200px 700px at 50% -8%,#12262E 0%,transparent 58%),var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;
+}
+
+/* SPLASH */
+.splash{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;transition:opacity .5s}
+.splash.out{opacity:0;pointer-events:none}
+.mark{width:92px;height:92px;border-radius:var(--r-full);overflow:hidden;
+  box-shadow:0 0 0 9px rgba(0,214,160,.09),0 16px 50px rgba(0,214,160,.26);
+  animation:pop .7s cubic-bezier(.2,1.1,.3,1)}
+.mark svg{width:100%;height:100%;display:block}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.wordmark{margin-top:20px;font-size:19px;font-weight:650;letter-spacing:2.4px;
+  text-transform:uppercase;animation:fadeUp .6s .18s both}
+.tagline{margin-top:7px;font-size:11.5px;color:var(--muted);animation:fadeUp .6s .3s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+/* DOWNLOAD */
+.dl{position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:0 42px;text-align:center}
+.dl.on{display:flex}
+
+/* two-step progress list */
+.steps{width:100%;margin-bottom:22px}
+.step{display:flex;align-items:center;gap:11px;padding:9px 0;opacity:.4;transition:opacity .3s}
+.step .tick{
+  width:19px;height:19px;border-radius:50%;flex-shrink:0;
+  display:grid;place-items:center;font-size:10px;font-weight:700;
+  border:1px solid rgba(255,255,255,.18);color:var(--muted);
+}
+.step .tx{flex:1;text-align:left;font-size:12.5px;font-weight:600}
+.step .sz{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.step.pending{opacity:1}
+.step.pending .tick{border-color:var(--brand);color:var(--brand);animation:pulse 1.5s ease-in-out infinite}
+.step.done{opacity:1}
+.step.done .tick{border-color:var(--brand);background:var(--brand);color:#03251D}
+.step.done .tick::before{content:'✓'}
+.step.pending .tick{font-size:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.bar{width:100%;height:5px;border-radius:var(--r-full);background:rgba(255,255,255,.08);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:var(--r-full);
+  background:linear-gradient(90deg,var(--brand),var(--brand-2));transition:width .18s}
+.pct{margin-top:13px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.spinner{margin-top:26px;width:15px;height:15px;border-radius:var(--r-full);
+  border:2px solid rgba(0,214,160,.22);border-top-color:var(--brand);
+  animation:spin .72s linear infinite}
+.spinner.hide{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sub{margin-top:14px;font-size:10.5px;color:var(--muted);line-height:1.6}
+.sub b{color:var(--text);font-weight:600}
+.err{color:var(--danger);font-size:11.5px;margin-top:14px;line-height:1.5}
+.btn{margin-top:24px;padding:13px 26px;border-radius:var(--r-full);border:none;
+  font:inherit;font-size:13.5px;font-weight:650;cursor:pointer;
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#03251D}
+.btn:active{transform:scale(.97)}
+.btn.hide{display:none}
+.hint{font-size:10px;color:var(--muted);opacity:.7;margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="splash" id="splash">
+    <div class="mark">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#00D6A0"/><stop offset="1" stop-color="#0A84FF"/>
+        </linearGradient></defs>
+        <circle cx="20" cy="20" r="19.5" fill="url(#lg)"/>
+        <g fill="#04231C">
+          <rect x="6.9" y="17" width="3.4" height="6" rx="1.7"/>
+          <rect x="12.6" y="13.4" width="3.4" height="13.2" rx="1.7"/>
+          <rect x="18.3" y="9.2" width="3.4" height="21.6" rx="1.7"/>
+          <rect x="24.0" y="13.4" width="3.4" height="13.2" rx="1.7"/>
+          <rect x="29.7" y="17" width="3.4" height="6" rx="1.7"/>
+        </g>
+      </svg>
+    </div>
+    <div class="wordmark">Delish</div>
+    <div class="tagline">Runs entirely on your phone</div>
+  </div>
+
+  <div class="dl" id="dl">
+    <div class="steps">
+      <div class="step done" id="step1">
+        <span class="tick">✓</span>
+        <span class="tx">AI model</span>
+        <span class="sz">521 MB</span>
+      </div>
+      <div class="step pending" id="step2">
+        <span class="tick">2</span>
+        <span class="tx">Speech recognition</span>
+        <span class="sz">41 MB</span>
+      </div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="pct" id="pct">starting…</div>
+    <div class="spinner" id="spin"></div>
+    <div class="sub" id="sub"></div>
+    <div class="err" id="err"></div>
+    <button class="btn hide" id="retryBtn">Try again</button>
+    <div class="hint">One time only · after this you never need the internet</div>
+  </div>
+</div>
+
+<script src="bridge.js"></script>
+<script>
+var splash = document.getElementById('splash'),
+    dl     = document.getElementById('dl'),
+    bar    = document.getElementById('bar'),
+    pct    = document.getElementById('pct'),
+    spin   = document.getElementById('spin'),
+    sub    = document.getElementById('sub'),
+    err    = document.getElementById('err');
+
+var B = window.DelishBridge;
+var NATIVE = B && B.hasNative;
+/* Qwen2.5-0.5B INT8 bundle is ~521 MB, Vosk small-en ~41 MB. */
+var TOTAL_MB = 562;
+var started = false;
+var retryBtn = document.getElementById('retryBtn');
+var step1 = document.getElementById('step1');
+var step2 = document.getElementById('step2');
+
+function showDownload(){
+  splash.classList.add('out');
+  dl.classList.add('on');
+  setTimeout(function(){ if(splash.parentNode) splash.remove(); }, 520);
+}
+
+function finish(){ setTimeout(function(){ location.replace('index.html'); }, 420); }
+
+function setProgress(p, gotMB){
+  bar.style.width = Math.max(0, Math.min(100, p)) + '%';
+  pct.textContent = Math.floor(p) + '%';
+  if (gotMB != null) sub.textContent = Math.round(gotMB) + ' / ' + TOTAL_MB + ' MB';
+}
+
+function fail(msg){
+  spin.classList.add('hide');
+  err.textContent = msg;
+  pct.textContent = 'failed';
+  started = false;
+  // The native side resumes from the .part file, so a retry continues
+  // where it stopped rather than starting over.
+  retryBtn.classList.remove('hide');
+  // put the step list back to a truthful state
+  if (bar.style.width !== '100%') step2.classList.add('pending');
+}
+
+function begin(){
+  if (started) return;
+  started = true;
+  err.textContent = '';
+  retryBtn.classList.add('hide');
+  spin.classList.remove('hide');
+  if (!dl.classList.contains('on')) showDownload();
+
+  // Two explicit steps: the model first, then the speech engine. Users should
+  // never wonder which one is downloading.
+  step1.classList.add('done');
+  step2.classList.remove('pending');
+
+  if (NATIVE) {
+    // already on disk? mark both steps done and go straight through
+    if (B.modelInstalled()) {
+      step1.classList.add('done'); step2.classList.add('done');
+      finish(); return;
+    }
+
+    B.on('download', function(p){
+      var done = !!p.done;
+      var pctv = p.percent != null ? p.percent : 0;
+      setProgress(pctv);
+      // 85% = LLM finished, now pulling the speech model
+      if (pctv >= 85) step1.classList.replace('pending','done');
+      sub.innerHTML = '<b>' + (p.bytes ? Math.round(p.bytes / 1048576) : Math.round(TOTAL_MB * pctv/100)) + '</b> / ' + TOTAL_MB + ' MB';
+      if (done) {
+        spin.classList.add('hide');
+        pct.textContent = 'ready';
+        step1.classList.add('done');
+        step2.classList.add('done');
+        sub.innerHTML = 'All resources installed';
+      }
+    });
+
+    B.on('modelReady', function(){
+      pct.textContent = 'ready';
+      sub.innerHTML = 'Starting Delish…';
+      finish();
+    });
+
+    B.on('error', function(p){
+      fail((p && p.message) ? p.message : 'Download failed');
+    });
+
+    B.requestDownload(true);        // <-- real download, Mini tier
+  } else {
+    // browser preview: simulate
+    var p = 0;
+    sub.textContent = 'browser preview — simulating';
+    var t = setInterval(function(){
+      p += Math.random() * 5.5;
+      if (p >= 100){
+        p = 100; clearInterval(t);
+        setProgress(100);
+        finish();
+        return;
+      }
+      setProgress(p, p * TOTAL_MB / 100);
+    }, 110);
+  }
+}
+
+retryBtn.addEventListener('click', function(){
+  if (NATIVE) B.clearDownloadError();
+  begin();
+});
+
+// already installed -> skip straight to chat
+if (NATIVE && B.modelInstalled()) {
+  location.replace('index.html');
+} else {
+  setTimeout(begin, 1900);
+}
+</script>
+</body>
+</html>

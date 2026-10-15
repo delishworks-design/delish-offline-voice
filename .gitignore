@@ -1,0 +1,25 @@
+# Build outputs
+build/
+app/build/
+.gradle/
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Keystores — never commit signing material
+*.jks
+*.keystore
+keystore.properties
+
+# Local machine config
+local.properties
+
+# Logs
+*.log
+
+# Editor/backup scratch files
+*.bak

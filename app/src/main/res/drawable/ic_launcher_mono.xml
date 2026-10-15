@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108"
+    android:tint="#FFFFFFFF">
+
+    <!-- Themed-icon (monochrome) variant: same geometry, no background.
+         The launcher supplies the tint, so everything is solid white. -->
+    <group
+        android:translateX="8"
+        android:translateY="8"
+        android:scaleX="2.3"
+        android:scaleY="2.3">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M6.9,17h3.4v6h-3.4z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M12.6,13.4h3.4v13.2h-3.4z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M18.3,9.2h3.4v21.6h-3.4z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M24.0,13.4h3.4v13.2h-3.4z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M29.7,17h3.4v6h-3.4z" />
+    </group>
+</vector>

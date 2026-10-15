@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Delish</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* Android WebView paints a grey overlay on every tap it reads as a glitch
+ next to the custom buttons, so kill it everywhere. Both of these properties
+ inherit, so one rule covers every descendant, buttons included.
+ text-size-adjust stops the composer glyphs from rescaling when the grid
+ column width changes in loop mode. */
+html{
+ -webkit-tap-highlight-color:transparent;tap-highlight-color:transparent;
+ -webkit-text-size-adjust:100%;text-size-adjust:100%;
+}
+/* taps must never select text or trigger the long-press callout */
+button,a,label,.row,.mcard,.pill{-webkit-user-select:none;user-select:none}
+button{outline:none}
+:root{
+ --bg:#080A0F; --surface:#12161E; --surface-2:#1B212C;
+ --line:rgba(255,255,255,.08);
+ --text:#E9EDF3; --muted:#8B95A5;
+ --brand:#00D6A0; --brand-2:#00A87C;
+ --danger:#FF5252; --warn:#FFB020;
+ --r-lg:20px; --r-full:999px;
+}
+html,body{height:100%}
+body{
+ margin:0;font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+ background:radial-gradient(1200px 700px at 50% -10%,#12262E 0%,transparent 55%),var(--bg);
+ color:var(--text);display:flex;align-items:center;justify-content:center;
+ padding:20px;-webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.phone{
+ position:relative;width:min(390px,100%);aspect-ratio:9/16;max-height:calc(100vh - 40px);
+ background:var(--bg);border-radius:40px;border:1px solid rgba(255,255,255,.1);
+ box-shadow:0 34px 100px rgba(0,0,0,.75),0 0 0 8px #14171D;
+ overflow:hidden;isolation:isolate;
+ display:flex;flex-direction:column;
+}
+.phone::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+ width:118px;height:24px;background:var(--bg);border-radius:0 0 16px 16px;z-index:60}
+.phone::after{content:"";position:absolute;bottom:7px;left:50%;transform:translateX(-50%);
+ width:112px;height:4px;background:rgba(255,255,255,.3);border-radius:var(--r-full);z-index:60}
+.statusbar{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;
+ justify-content:space-between;padding:0 22px;font-size:11.5px;font-weight:600;color:var(--muted);
+ z-index:50;pointer-events:none}
+.sb-r{display:flex;gap:5px;align-items:center}
+.sb-r i{display:block;width:15px;height:9px;border:1.4px solid var(--muted);border-radius:2.5px;position:relative}
+.sb-r i::after{content:"";position:absolute;inset:1.4px;background:var(--muted);border-radius:1px}
+
+/* HEADER */
+/* Header holds a single control: the chat drawer. Everything else (logo,
+ wordmark, settings) moved into the drawer. */
+.hdr{
+ flex-shrink:0;height:40px;display:flex;align-items:center;
+ padding:0 12px;z-index:45;position:relative;
+ background:linear-gradient(180deg,var(--bg) 0%,rgba(8,10,15,.92) 52%,rgba(8,10,15,0) 100%);
+}
+.hdr.hide{display:none}
+.histbtn{width:34px;height:34px;flex-shrink:0;border:none;background:none;padding:0;
+ border-radius:var(--r-full);color:var(--muted);cursor:pointer;
+ display:grid;place-items:center;transition:transform .16s,color .2s,background .2s}
+.histbtn svg{width:20px;height:20px;fill:currentColor}
+.histbtn:active{transform:scale(.9);color:var(--brand)}
+.phone.loop .hdr{visibility:hidden}
+.hdr-av{width:30px;height:30px;border-radius:var(--r-full);display:grid;place-items:center;
+ flex-shrink:0;overflow:hidden;line-height:0}
+.hdr-av svg{width:100%;height:100%;display:block}
+.hdr-n{font-size:13px;font-weight:650;line-height:1.2}
+.hdr-s{font-size:10px;color:var(--muted)}
+.hdr-txt{flex:1;min-width:0}
+.setbtn{width:32px;height:32px;flex-shrink:0;border:none;background:none;padding:0;cursor:pointer;
+ color:var(--muted);border-radius:var(--r-full);display:grid;place-items:center;
+ text-decoration:none;position:relative;z-index:51;
+ transition:transform .16s,color .2s,background .2s}
+.setbtn:hover{color:var(--brand);background:var(--surface-2)}
+.setbtn:active{transform:scale(.88)}
+.setbtn svg{width:19px;height:19px;fill:currentColor}
+
+/* EQUALIZER AREA (loop mode) status sits directly under the EQ */
+/* EQ area loop mode ONLY (chat-to-chat untouched) */
+.eqarea{
+ flex:1 1 auto;min-height:0;display:none;
+ flex-direction:column;align-items:center;justify-content:center;
+ gap:14px;padding:0 0 8px;position:relative;cursor:pointer;
+}
+.phone.loop .eqarea{display:flex}
+.eqbox{display:flex;align-items:center;justify-content:center;gap:6px;height:64px}
+.eqbox b{display:block;width:7px;border-radius:var(--r-full);background:var(--muted);height:6px;
+ transition:height .07s linear,background .35s,box-shadow .35s}
+/* idle: subtle invitation pulse */
+.eqarea[data-s="idle"] .eqbox b{animation:idleHint 2s ease-in-out infinite}
+@keyframes idleHint{
+ 0%,100%{height:6px;opacity:.4;background:var(--muted)}
+ 45%{height:15px;opacity:.95;background:var(--brand)}
+}
+.eqarea[data-s="listen"] .eqbox b{
+ background:var(--danger);
+ box-shadow:0 0 10px rgba(255,82,82,.35);
+ animation:listenGlow 1.5s ease-in-out infinite;
+}
+@keyframes listenGlow{
+ 0%,100%{box-shadow:0 0 8px rgba(255,82,82,.28)}
+ 50%{box-shadow:0 0 20px rgba(255,82,82,.62)}
+}
+.eqarea[data-s="think"] .eqbox b{background:var(--warn);box-shadow:0 0 11px rgba(255,176,32,.45)}
+.eqarea[data-s="speak"] .eqbox b{background:var(--brand);box-shadow:0 0 14px rgba(0,214,160,.55)}
+
+.chip{display:none !important}
+.phone.loop .chip{display:none !important}
+.chip .dot{width:4px;height:4px;border-radius:var(--r-full);background:currentColor;flex-shrink:0}
+
+/* THINKING STATUS 
+ One component, two placements:
+ chat a bot bubble at the very bottom, exactly where the reply lands
+ loop a pill floating directly under the EQ bars
+ Kept deliberately small it is a state hint, not a feature. */
+.sdot{width:4px;height:4px;border-radius:var(--r-full);background:var(--brand);
+ opacity:.3;flex-shrink:0;animation:sdot 1.25s ease-in-out infinite}
+.sdot:nth-child(2){animation-delay:.18s}
+.sdot:nth-child(3){animation-delay:.36s}
+@keyframes sdot{
+ 0%,60%,100%{opacity:.25;transform:translateY(0)}
+ 30%{opacity:1;transform:translateY(-2.5px)}
+}
+.slb{margin-left:5px;font-size:10.5px;color:var(--muted);letter-spacing:.2px;white-space:nowrap}
+
+/* chat placement sits in the message list where the reply bubble will appear */
+.bubble.st{display:flex;align-items:center;gap:5px;padding:12px 15px;min-height:0}
+.bubble.st .slb{font-style:normal}
+
+/* CHAT HISTORY DRAWER */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:60;
+ opacity:0;visibility:hidden;transition:opacity .26s,visibility 0s linear .26s}
+.scrim.on{opacity:1;visibility:visible;transition:opacity .26s,visibility 0s linear 0s}
+
+.drawer{
+ position:absolute;top:0;left:0;bottom:0;width:min(288px,84%);z-index:61;
+ display:flex;flex-direction:column;
+ background:#0C1016;border-right:1px solid var(--line);
+ transform:translateX(-102%);transition:transform .3s cubic-bezier(.22,.85,.3,1);
+ /* the drawer is inside the phone shell, which is edge-to-edge: keep the top
+ clear of the status bar, but raised just a little */
+ padding-top:calc(max(var(--sat,env(safe-area-inset-top,0px)) - 6px, 4px));
+}
+.drawer.on{transform:none}
+.drawer-hd{display:flex;align-items:center;gap:8px;padding:10px 12px 12px;
+ border-bottom:1px solid var(--line)}
+/* title bar at the top of the drawer */
+.drawer-ttl{display:flex;align-items:center;justify-content:space-between;
+ padding:12px 12px 10px 16px;border-bottom:1px solid var(--line)}
+.drawer-ttl b{font-size:13px;font-weight:650;letter-spacing:-.1px}
+.newchat-wrap{display:flex;padding:10px 12px 12px}
+.newchat{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+ padding:10px;border-radius:var(--r-full);cursor:pointer;
+ border:1px solid rgba(0,214,160,.28);background:rgba(0,214,160,.07);
+ color:var(--brand);font:inherit;font-size:12.5px;font-weight:650}
+.newchat svg{width:16px;height:16px;fill:currentColor}
+.newchat:active{transform:scale(.97)}
+.drawer-x{width:32px;height:32px;flex-shrink:0;border:none;background:none;padding:0;
+ border-radius:var(--r-full);color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.drawer-x svg{width:17px;height:17px;fill:currentColor}
+.drawer-x:active{transform:scale(.9)}
+
+.drawer-list{flex:1;min-height:0;overflow-y:auto;padding:8px}
+.drawer-list::-webkit-scrollbar{width:0;height:0}
+/* footer carries the note on the left, settings gear on the right */
+.drawer-ft{display:flex;align-items:center;justify-content:flex-end;gap:10px;
+ padding:8px 10px 8px 14px;font-size:9.5px;color:var(--muted);
+ border-top:1px solid var(--line)}
+.drawer-ft .setbtn{width:38px;height:38px}
+.drawer-ft .setbtn svg{width:24px;height:24px}
+.setbtn{width:32px;height:32px;flex-shrink:0;border:none;background:none;padding:0;
+ border-radius:var(--r-full);color:var(--muted);cursor:pointer;
+ display:grid;place-items:center;text-decoration:none;
+ transition:transform .16s,color .2s,background .2s}
+.setbtn svg{width:19px;height:19px;fill:currentColor}
+.setbtn:active{transform:scale(.88)}
+
+.trow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+ padding:9px 10px;border-radius:12px;cursor:pointer;
+ border:1px solid transparent;background:none;color:var(--text);font:inherit}
+.trow.on{background:var(--surface-2);border-color:var(--line)}
+.trow:active{background:var(--surface-2)}
+.trow .t-main{flex:1;min-width:0}
+.trow .t-t{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .t-p{font-size:9.5px;color:var(--muted);margin-top:2px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .t-del{width:26px;height:26px;flex-shrink:0;border:none;background:none;padding:0;
+ border-radius:var(--r-full);color:var(--muted);cursor:pointer;display:grid;place-items:center;
+ opacity:0;transition:opacity .18s}
+.trow.on .t-del,.trow:active .t-del{opacity:1}
+.trow .t-del svg{width:14px;height:14px;fill:currentColor}
+.drawer-empty{padding:26px 16px;text-align:center;font-size:11px;color:var(--muted);line-height:1.6}
+
+/* Voice-loop status bare, no container. Just the dots and the word, floating
+ under the EQ where nothing else competes for attention. */
+.lloop{
+ display:flex;align-items:center;gap:5px;pointer-events:none;
+ max-width:100%;padding:0;background:none;border:none;
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ animation:fadeUp .22s both;
+}
+.phone.loop .eqarea[data-s="listen"] .lloop .sdot{background:var(--danger)}
+.phone.loop .eqarea[data-s="speak"] .lloop .sdot{background:var(--brand);animation-duration:.6s}
+.phone.loop .eqarea[data-s="idle"] .lloop{opacity:.45}
+
+/* Live transcript lives in the chat preview, styled as an unfinished
+ user bubble dashed outline so it's obvious it isn't final yet. */
+.bubble.tx{font-style:italic;color:var(--muted);
+ border:1px dashed rgba(255,82,82,.4)!important;background:rgba(255,82,82,.05)}
+.bubble.tx::after{content:'';color:var(--danger);opacity:.8;margin-left:2px}
+
+/* WELCOME (empty state hides once convo starts) */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:16px;padding:20px 30px 30px;text-align:center;animation:fadeUp .6s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.w-mark{width:62px;height:62px;border-radius:var(--r-full);overflow:hidden;line-height:0;
+ box-shadow:0 0 0 6px rgba(0,214,160,.09),0 10px 30px rgba(0,214,160,.22)}
+.w-mark svg{width:100%;height:100%;display:block}
+.w-txt{font-size:16px;font-weight:600;line-height:1.55;letter-spacing:-.1px}
+.w-txt span{color:var(--muted);font-weight:400}
+/* "no model yet" call to action */
+.w-cta{margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.w-btn{
+ display:inline-block;padding:12px 22px;border-radius:var(--r-full);
+ background:linear-gradient(135deg,var(--brand),var(--brand-2));
+ color:#03251D;text-decoration:none;font-size:13.5px;font-weight:650;
+ box-shadow:0 6px 20px rgba(0,214,160,.24)}
+.w-btn:active{transform:scale(.96)}
+.w-note{font-size:10.5px;color:var(--muted)}
+/* inline notice bubble */
+.notice{
+ align-self:center;max-width:90%;text-align:center;
+ font-size:11.5px;line-height:1.5;color:var(--warn);
+ padding:8px 13px;border-radius:var(--r-full);
+ background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.25)}
+.chat.talk .welcome{display:none}
+.chat{
+ flex:1;min-height:0;padding:4px 16px 8px;
+ overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;
+}
+.chat::-webkit-scrollbar{width:0;height:0}
+.chat{scrollbar-width:none;-ms-overflow-style:none}
+/* loop mode: chat preview COLLAPSED by default EQ bars toggle it.
+ Mask + background are ALWAYS applied in loop mode so there is no
+ flash/repaint when toggling. Only height/opacity/visibility animate. */
+.phone.loop .chat{
+ flex:0 0 auto;height:0;padding:0 14px;opacity:0;overflow:hidden;
+ visibility:hidden;pointer-events:none;
+ border:1px solid transparent;border-radius:var(--r-lg) var(--r-lg) 0 0;
+ background:linear-gradient(180deg,
+ rgba(18,22,30,.10) 0%,
+ rgba(18,22,30,.46) 30%,
+ rgba(18,22,30,.60) 62%,
+ rgba(8,10,15,0) 100%);
+ -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 12%,#000 72%,transparent 100%);
+ mask-image:linear-gradient(180deg,transparent 0%,#000 12%,#000 72%,transparent 100%);
+ transition:height .34s cubic-bezier(.22,.85,.3,1),
+ opacity .22s ease,
+ padding .34s cubic-bezier(.22,.85,.3,1),
+ visibility 0s linear .34s;
+}
+.phone.loop.chatopen .chat{
+ height:34%;margin-top:0;padding:14px 14px 26px;opacity:1;
+ visibility:visible;pointer-events:auto;
+ border-color:rgba(255,255,255,.04);
+ transition:height .34s cubic-bezier(.22,.85,.3,1),
+ opacity .18s ease,
+ padding .34s cubic-bezier(.22,.85,.3,1),
+ visibility 0s linear 0s;
+}
+.phone.loop .chat .row{opacity:.86}
+.phone.loop .chat .note{background:rgba(27,33,44,.4);color:rgba(139,149,165,.8)}
+.phone.loop .chat .row.me .bubble{
+ background:linear-gradient(135deg,rgba(0,201,149,.34),rgba(0,154,120,.42));
+ color:rgba(233,237,243,.8)}
+.phone.loop .chat .row.bot .bubble{
+ background:linear-gradient(135deg,rgba(27,33,44,.5),rgba(18,22,30,.55));
+ border-color:rgba(255,255,255,.045);color:rgba(233,237,243,.78)}
+.phone.loop .chat .av{display:none}
+
+/* composer floats above the faded chat panel (only when expanded) */
+.phone.loop .dock{
+ padding-top:16px;
+ background:linear-gradient(180deg,rgba(8,10,15,0) 0%,rgba(8,10,15,.82) 55%,var(--bg) 100%);
+}
+.phone.loop .field{
+ background:rgba(27,33,44,.9);
+ border-color:rgba(255,255,255,.09);
+ box-shadow:0 6px 22px rgba(0,0,0,.45);
+}
+.row{display:flex;gap:8px;max-width:100%;animation:rise .3s cubic-bezier(.2,.8,.3,1)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* user bubble: right-aligned (no row-reverse it flips the main axis) */
+.row.me{justify-content:flex-end}
+.av{display:none}
+.bubble{padding:9px 14px;border-radius:var(--r-lg);font-size:12.5px;line-height:1.5;
+ max-width:min(84%,300px);word-wrap:break-word;overflow-wrap:anywhere}
+.row.bot .bubble{background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:5px}
+.row.me .bubble{background:linear-gradient(135deg,#00C995,#009A78);color:#03251D;
+ border-bottom-right-radius:5px;font-weight:500}
+.note{align-self:center;max-width:88%;text-align:center;font-size:10px;color:var(--muted);
+ padding:5px 10px;border-radius:var(--r-full);background:var(--surface-2)}
+
+/* DOCK */
+/* composer icons: identical box + identical optical size, symmetric padding */
+.dock{
+ flex-shrink:0;padding:10px 14px 22px;
+ display:grid;grid-template-columns:34px 1fr 34px;
+ align-items:center;gap:10px;
+}
+/* Explicit placement loop mode swaps eqBtn for closeBtn, and without this
+ the auto-placement pushes the textarea into the 34px gutter. */
+#eqBtn{grid-column:1;grid-row:1}
+#closeBtn{grid-column:1;grid-row:1}
+#field{grid-column:2;grid-row:1;min-width:0}
+#send{grid-column:3;grid-row:1}
+#stopBtn{grid-column:3;grid-row:1}
+/* `font:inherit` lets the WebView's text-autosizing shrink the glyphs once the
+ loop mode narrows the composer. Pin the family AND the size so the input
+ never rescales between chat and voice loop. */
+.field{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:22px;
+ padding:12px 16px;color:var(--text);
+ font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+ font-size:13.5px;font-weight:400;resize:none;max-height:86px;line-height:1.45;
+ -webkit-text-size-adjust:100%;text-size-adjust:100%}
+.field::placeholder{color:var(--muted)}
+.field:focus{outline:none;border-color:var(--brand)}
+/* kill the textarea's own scrollbar when it grows while typing */
+.field::-webkit-scrollbar{width:0;height:0;display:none}
+.field{scrollbar-width:none;-ms-overflow-style:none;overflow-y:auto}
+/* left / right icon buttons same 34px box, same 22px glyph */
+.sendb,.eqbtn,.closebtn{
+ width:34px;height:34px;padding:0;border:none;background:none;
+ display:grid;place-items:center;cursor:pointer;
+ transition:transform .16s,color .2s;
+}
+.sendb{color:var(--brand)}
+.sendb:hover{color:var(--brand-2)}
+.eqbtn{color:var(--muted)}
+.eqbtn:hover{color:var(--brand)}
+.closebtn{color:var(--muted);display:none}
+.phone.loop .closebtn{display:grid}
+.closebtn:hover{color:var(--danger)}
+.sendb:active,.eqbtn:active,.closebtn:active{transform:scale(.88)}
+
+.sendb svg{width:22px;height:22px;fill:currentColor}
+
+/* interrupt / barge-in 
+ Appears in the send slot while Delish is generating or talking. */
+.stopb{
+ width:34px;height:34px;flex-shrink:0;cursor:pointer;display:none;place-items:center;
+ background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.35);
+ border-radius:12px;padding:0;color:var(--danger);
+ transition:transform .15s,background .2s,color .2s;
+}
+.stopb.on{display:grid}
+.stopb:hover{color:#FF7A7A}
+.stopb:active{transform:scale(.88)}
+.stopb svg{width:18px;height:18px;fill:currentColor;animation:stopPulse 1.25s ease-in-out infinite}
+@keyframes stopPulse{0%,100%{opacity:.6}50%{opacity:1}}
+.dock.busy .sendb{display:none}
+.eqbtn svg{width:22px;height:22px;display:block}
+.eqbtn svg rect{fill:currentColor}
+.closebtn svg{width:20px;height:20px;fill:currentColor}
+
+/* EQ icon only in chat mode removed in voice loop */
+.phone.loop .eqbtn{display:none}
+
+@media(max-aspect-ratio:9/16),(max-width:420px){
+ body{padding:0;display:block;background:var(--bg)}
+ .phone{width:100%;max-height:none;height:100vh;height:100dvh;aspect-ratio:auto;
+ border-radius:0;border:none;box-shadow:none;
+ /* the shell itself drops below the status bar / notch. `env()` is only a
+ fallback Android WebView reports 0 there, so MainActivity injects the
+ real values as --sat / --sab. */
+ padding-top:var(--sat,env(safe-area-inset-top,0px));
+ padding-bottom:var(--sab,env(safe-area-inset-bottom,0px));}
+ .phone::before,.phone::after{display:none}
+ .statusbar{display:none}
+ .hdr{padding-top:0}
+}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+ <div class="statusbar"><span>9:41</span><span class="sb-r"><i></i></span></div>
+
+ <!-- Header is intentionally bare: one blank tap target that opens the chat
+ drawer. Logo, wordmark and the settings gear all moved into the drawer. -->
+ <div class="hdr" id="hdr">
+ <button class="histbtn" id="histBtn" aria-label="Chats">
+ <!-- Iconify: mdi:menu (Material Design Icons, Apache-2.0), inlined so the
+ app stays fully offline the Iconify CDN would defeat the point. -->
+ <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+ </button>
+ </div>
+
+ <div class="eqarea" id="eqarea" data-s="listen">
+ <div class="eqbox" id="eqbox"></div>
+ <!-- status chip removed -->
+ </div>
+
+ <main class="chat" id="chat">
+ <div class="welcome" id="welcome">
+ <div class="w-mark">
+ <svg viewBox="0 0 40 40" aria-hidden="true">
+ <defs><linearGradient id="lgW" x1="0" y1="0" x2="1" y2="1">
+ <stop offset="0" stop-color="#00D6A0"/><stop offset="1" stop-color="#0A84FF"/>
+ </linearGradient></defs>
+ <circle cx="20" cy="20" r="19.5" fill="url(#lgW)"/>
+ <g fill="#04231C">
+ <rect x="6.9" y="17" width="3.4" height="6" rx="1.7"/>
+ <rect x="12.6" y="13.4" width="3.4" height="13.2" rx="1.7"/>
+ <rect x="18.3" y="9.2" width="3.4" height="21.6" rx="1.7"/>
+ <rect x="24.0" y="13.4" width="3.4" height="13.2" rx="1.7"/>
+ <rect x="29.7" y="17" width="3.4" height="6" rx="1.7"/>
+ </g>
+ </svg>
+ </div>
+ <div class="w-txt" id="wTxt">Hi, I'm Delish.</div>
+ </div>
+ </main>
+
+ <!-- CHAT HISTORY DRAWER -->
+ <div class="scrim" id="scrim"></div>
+ <aside class="drawer" id="drawer">
+ <div class="drawer-ttl">
+ <b>Chats</b>
+ <button class="drawer-x" id="drawerX" aria-label="Close">
+ <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+ </button>
+ </div>
+ <div class="newchat-wrap">
+ <button class="newchat" id="newChatBtn">
+ <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+ <span>New chat</span>
+ </button>
+ </div>
+ <div class="drawer-list" id="drawerList"></div>
+ <div class="drawer-ft">
+ <a class="setbtn" id="setBtn" href="settings.html" aria-label="Settings">
+ <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 8a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2a2 2 0 0 0 2 2a2 2 0 0 0 2-2a2 2 0 0 0-2-2m-2 12c-.25 0-.46-.18-.5-.42l-.37-2.65c-.63-.25-1.17-.59-1.69-.99l-2.49 1.01c-.22.08-.49 0-.61-.22l-2-3.46a.493.493 0 0 1 .12-.64l2.11-1.66L4.5 12l.07-1l-2.11-1.63a.493.493 0 0 1-.12-.64l2-3.46c.12-.22.39-.31.61-.22l2.49 1c.52-.39 1.06-.73 1.69-.98l.37-2.65c.04-.24.25-.42.5-.42h4c.25 0 .46.18.5.42l.37 2.65c.63.25 1.17.59 1.69.98l2.49-1c.22-.09.49 0 .61.22l2 3.46c.13.22.07.49-.12.64L19.43 11l.07 1l-.07 1l2.11 1.63c.19.15.25.42.12.64l-2 3.46c-.12.22-.39.31-.61.22l-2.49-1c-.52.39-1.06.73-1.69.98l-.37 2.65c-.04.24-.25.42-.5.42z"/></svg>
+ </a>
+ </div>
+ </aside>
+
+ <div class="dock" id="dock">
+ <button class="eqbtn" id="eqBtn" aria-label="Start voice loop">
+ <svg viewBox="0 0 24 24">
+ <rect x="2" y="9" width="3.6" height="6"></rect>
+ <rect x="7.6" y="5" width="3.6" height="14"></rect>
+ <rect x="13.2" y="2" width="3.6" height="20"></rect>
+ <rect x="18.8" y="7" width="3.6" height="10"></rect>
+ </svg>
+ </button>
+
+ <button class="closebtn" id="closeBtn" aria-label="Stop voice loop">
+ <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+ </button>
+ <textarea class="field" id="field" rows="1" placeholder="Message Delish..."></textarea>
+ <button class="sendb" id="send" aria-label="Send">
+ <svg viewBox="0 0 24 24"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"/></svg>
+ </button>
+
+ <button class="stopb" id="stopBtn" aria-label="Stop">
+ <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg>
+ </button>
+ </div>
+</div>
+
+<script src="bridge.js"></script>
+<script>
+const $ = id=>document.getElementById(id);
+const B = window.DelishBridge;
+const NATIVE = B && B.hasNative;
+
+/* Preview-only hook: on a device MainActivity pushes the real notch height in
+ as --sat / --sab. There is no notch in a desktop browser, so ?sat=44&sab=34
+ lets the safe-area layout be checked here before shipping. */
+(function(){
+ var q = new URLSearchParams(location.search);
+ if (!q.has('sat') && !q.has('sab')) return;
+ var r = document.documentElement;
+ if (q.has('sat')) r.style.setProperty('--sat', q.get('sat') + 'px');
+ if (q.has('sab')) r.style.setProperty('--sab', q.get('sab') + 'px');
+})();
+/* Mutable: the native side is the source of truth and pushes updates via the
+ `ready` / `modelReady` events, so a one-shot read at parse time is wrong. */
+let MODEL_OK = NATIVE ? (B.engineInfo().hasModel === true) : true;
+let NEEDS_MODEL = NATIVE && !MODEL_OK;
+
+function setModelState(hasModel){
+ MODEL_OK = !!hasModel;
+ NEEDS_MODEL = NATIVE && !MODEL_OK;
+}
+const phone=$('phone'),eqarea=$('eqarea'),
+ eqbox=$('eqbox'),chat=$('chat'),field=$('field');
+
+const NB=9;
+for(let i=0;i<NB;i++)eqbox.appendChild(document.createElement('b'));
+const bars=[...eqbox.children];
+
+const REPLIES=[
+ "Yes, I can do that! You don't need Google anymore I'm right here, even with no signal.",
+ "Go ahead and ask! I'm Delish fully offline, I'm available 24/7.",
+ "Ha! Told you my 0.5B can handle that. Try me again!",
+ "Remember: no internet needed here. You ask, I answer.",
+ "I don't need Google. I'm on your phone and I'm good, if I do say so myself."
+];
+const PHRASES=["How are you doing?","What's the benefit of offline AI?","You're on your own, buddy"];
+
+let loopOn=false,timers=[],raf=null,mode='idle';
+const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+const clearT=()=>{timers.forEach(clearTimeout);timers=[]};
+const scroll=()=>{chat.scrollTop=chat.scrollHeight};
+
+function note(t){const d=document.createElement('div');d.className='note';d.textContent=t;
+ chat.classList.add('talk');chat.appendChild(d);scroll()}
+function bubble(text,who){
+ const r=document.createElement('div');r.className='row '+who;
+ const b=document.createElement('div');b.className='bubble';b.textContent=text;
+ r.append(b);chat.classList.add('talk');chat.appendChild(r);scroll();
+}
+/* THINKING STATUS 
+ Chat: a bot bubble pinned to the bottom of the list, so the reply lands
+ exactly where the user is already looking.
+ Voice loop: a pill directly beneath the EQ bars (the loop has no chat list
+ worth filling while collapsed). */
+let statusEl = null; // chat mode only a bot row pinned to the bottom
+let lineEl = null; // loop mode only the single line under the EQ bars
+
+function statusDots(label){
+ return '<i class="sdot"></i><i class="sdot"></i><i class="sdot"></i>' +
+ '<span class="slb">' + label + '</span>';
+}
+
+/* The bare line under the EQ carries the state word only. */
+function showLine(content){
+ if(!lineEl){
+ lineEl = document.createElement('div');
+ lineEl.id = 'loopline';
+ eqarea.appendChild(lineEl);
+ }
+ lineEl.className = 'lloop';
+ lineEl.innerHTML = content;
+}
+function hideLine(){
+ if (lineEl && lineEl.parentNode) lineEl.parentNode.removeChild(lineEl);
+ lineEl = null;
+}
+
+function showStatus(label){
+ label = label || 'thinking';
+ if (loopOn) { showLine(statusDots(label)); return; }
+
+ // chat mode: reuse the existing row and just relabel, so the entrance
+ // animation doesn't restart on every state change
+ if (statusEl) { setStatus(label); return; }
+ const el = document.createElement('div');
+ el.className = 'row bot';
+ const b = document.createElement('div');
+ b.className = 'bubble st';
+ b.innerHTML = statusDots(label);
+ el.appendChild(b);
+ chat.classList.add('talk');
+ chat.appendChild(el);
+ scroll();
+ statusEl = el;
+}
+
+function setStatus(label){
+ if (loopOn) { showLine(statusDots(label)); return; }
+ if (!statusEl) return;
+ const lb = statusEl.querySelector('.slb');
+ if (lb) lb.textContent = label;
+}
+
+function hideStatus(){
+ if (statusEl && statusEl.parentNode) statusEl.parentNode.removeChild(statusEl);
+ statusEl = null;
+ hideLine();
+}
+
+/* live speech-to-text preview 
+ Renders into the chat preview, not the status line: what you said belongs
+ with the conversation, and the status slot is reserved for the state word.
+ The bubble is dashed while unconfirmed, so it reads as provisional.
+
+ The preview is collapsed by default in loop mode, so it's opened for the
+ duration of the turn and closed again afterwards (unless the user turned on
+ "Keep chat preview open", which owns the state outright). */
+let txEl = null;
+let autoOpened = false;
+
+function showTranscript(text){
+ const t = (text || '').trim();
+ if (!t) { clearTranscript(); return; }
+
+ // make sure the words are actually on screen
+ if (!phone.classList.contains('chatopen') && !KEEP_PREVIEW){
+ autoOpened = true;
+ toggleChatPreview(true);
+ }
+
+ if (!txEl) {
+ const row = document.createElement('div');
+ row.className = 'row me';
+ const b = document.createElement('div');
+ b.className = 'bubble tx';
+ row.appendChild(b);
+ chat.classList.add('talk');
+ chat.appendChild(row);
+ txEl = row;
+ }
+ txEl.firstChild.textContent = t;
+ scroll();
+}
+
+function clearTranscript(){
+ if (txEl && txEl.parentNode) txEl.parentNode.removeChild(txEl);
+ txEl = null;
+}
+
+/** Puts the preview back the way the user left it. */
+function settlePreview(){
+ if (autoOpened && !KEEP_PREVIEW){
+ autoOpened = false;
+ toggleChatPreview(false);
+ }
+}
+
+/* EQUALIZER ENGINE */
+function setEq(m){
+ mode=m;eqarea.dataset.s=m;
+ cancelAnimationFrame(raf);raf=null;
+ if(m==='idle'){bars.forEach(b=>{b.style.height='6px';b.style.opacity=''});return}
+ const t0=performance.now();
+ const tick=()=>{
+ const t=performance.now()-t0;
+ bars.forEach((b,i)=>{
+ let h=6, glow=1;
+ if(mode==='listen'){
+ // flat line + gentle breathing shimmer travelling across
+ const sh=Math.sin(t/420-i*0.5);
+ h=5+Math.max(0,sh)*3;
+ glow=0.55+0.45*(0.5+0.5*Math.sin(t/420-i*0.5));
+ }
+ else if(mode==='think'){
+ h=6+Math.abs(Math.sin(t/260-i*0.6))*14;
+ glow=0.6+0.4*(0.5+0.5*Math.sin(t/260-i*0.6));
+ }
+ else if(mode==='speak'){
+ const a=Math.sin(t/120+i*0.55),c=Math.sin(t/83+i*1.2);
+ h=7+Math.abs(a*0.6+c*0.4)*42;
+ glow=0.55+0.45*(0.5+0.5*Math.sin(t/120+i*0.55));
+ }
+ b.style.height=Math.round(h)+'px';
+ b.style.opacity=glow.toFixed(3);
+ });
+ raf=requestAnimationFrame(tick);
+ };
+ tick();
+}
+
+function setState(s){
+ setEq(s==='idle'?'idle':s);
+}
+
+function freshChat(){
+ clearT();
+ hideStatus();
+ txEl = null;
+ autoOpened = false;
+ chat.innerHTML='';
+ chat.classList.remove('talk');
+}
+
+function runLoop(){
+ const phrase=PHRASES[Math.floor(Math.random()*PHRASES.length)];
+ setState('listen');
+ showStatus('listening'); // browser preview only
+ later(()=>afterListen(phrase),2600);
+}
+function afterListen(phrase){
+ clearT();
+ setState('think');
+ bubble(phrase,'me');
+ showStatus('thinking');
+ const reply=REPLIES[Math.floor(Math.random()*REPLIES.length)];
+ later(()=>{
+ hideStatus();
+ bubble(reply,'bot');
+ setState('speak');
+ showStatus('speaking');
+ later(()=>{ if(loopOn)later(runLoop,380); else stopLoop(); },1200+reply.length*26);
+ },950);
+}
+function startLoop(){
+ loopOn = true;
+ phone.classList.add('loop');
+ $('hdr').style.display = 'none';
+ freshChat();
+ // "Keep chat preview open" (Settings) forces it expanded instead of collapsed
+ toggleChatPreview(KEEP_PREVIEW);
+
+ // Native present -> the real Vosk/LLM/TTS pipeline drives everything.
+ // NEVER fall back to the simulation here: a native error must surface,
+ // not silently turn into a fake demo.
+ if (NATIVE) { B.startVoiceLoop(); return; }
+
+ runLoop(); // browser preview only
+}
+
+/* Restores everything startLoop() changed. Both the explicit stop button AND
+ a native `state: idle` have to call this the loop can end either way
+ (user taps stop, engine finishes, or the mic permission is refused), and
+ leaving the header hidden in any one of those is what broke the layout. */
+function leaveLoopUI(){
+ clearT(); cancelAnimationFrame(raf); raf = null;
+ loopOn = false;
+ hideStatus();
+ clearTranscript();
+ autoOpened = false;
+ setState('idle');
+ phone.classList.remove('loop');
+ phone.classList.remove('chatopen');
+ $('hdr').style.display = '';
+ $('closeBtn').style.display = '';
+ setBusy(false);
+ // the loop just wrote a full turn to the store pull it back into the chat
+ syncFromStore();
+}
+
+function stopLoop(){
+ if (NATIVE) B.stopVoiceLoop();
+ leaveLoopUI();
+}
+
+/* chat preview collapse/expand (voice loop mode only).
+ Settings "Keep chat preview open" forces it expanded. */
+const KEEP_PREVIEW = (function(){
+ try { return localStorage.getItem('delish_ui.keepPreview') === '1'; }
+ catch(e){ return false; }
+})();
+
+function toggleChatPreview(force){
+ const open = force!==undefined ? force : !phone.classList.contains('chatopen');
+ if(open === phone.classList.contains('chatopen')) return;
+ phone.classList.toggle('chatopen',open);
+ if(open) setTimeout(scroll,360);
+}
+
+/* EQ button starts the loop (chat mode); EQ bars toggle preview (loop mode) */
+$('eqBtn').onclick=()=>{
+ if (NEEDS_MODEL) {
+ const n=document.createElement('div');
+ n.className='notice';
+ n.textContent='Download the AI model first tap then Download Delish.';
+ chat.classList.add('talk'); chat.appendChild(n); scroll();
+ return;
+ }
+ if(!loopOn) startLoop();
+};
+eqarea.onclick=()=>{ if(loopOn) toggleChatPreview(); };
+$('closeBtn').onclick=stopLoop;
+
+/* CHAT HISTORY DRAWER */
+function drawerOpen(on){
+ $('drawer').classList.toggle('on', on);
+ $('scrim').classList.toggle('on', on);
+ if (on && NATIVE) renderHistory(B.recents());
+}
+/* Only the button is the target now that it has a visible icon a click
+ handler on #hdr as well would fire twice and cancel itself out. */
+$('histBtn').onclick = ()=>drawerOpen(true);
+$('drawerX').onclick = ()=>drawerOpen(false);
+$('scrim').onclick = ()=>drawerOpen(false);
+$('setBtn').onclick = ()=>drawerOpen(false);
+
+$('newChatBtn').onclick = ()=>{
+ if (NATIVE) B.newChat(); // native replies with a `session` event
+ else { freshChat(); }
+ drawerOpen(false);
+};
+
+function renderHistory(list){
+ const box = $('drawerList');
+ if (!box) return;
+ box.innerHTML = '';
+ if (!list || !list.length){
+ box.innerHTML = '<div class="drawer-empty">No conversations yet.<br>Say something and it shows up here.</div>';
+ return;
+ }
+ list.forEach(s => {
+ const row = document.createElement('button');
+ row.className = 'trow' + (s.active ? ' on' : '');
+ const when = new Date(s.updatedAt || 0);
+ const stamp = isToday(when) ? when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+ : when.toLocaleDateString([], {month:'short',day:'numeric'});
+ row.innerHTML =
+ '<div class="t-main"><div class="t-t"></div><div class="t-p"></div></div>' +
+ '<div class="t-del" title="Delete"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3zM7 6h10v13H7zm2 2v9h2V8zm4 0v9h2V8z"/></svg></div>';
+ row.querySelector('.t-t').textContent = s.title || 'New chat';
+ row.querySelector('.t-p').textContent = stamp + ' — ' + ((s.preview || '').slice(0, 34));
+ row.onclick = (e) => {
+ if (e.target.closest('.t-del')) return;
+ if (NATIVE) B.openSession(s.id);
+ drawerOpen(false);
+ };
+ row.querySelector('.t-del').onclick = (e) => {
+ e.stopPropagation();
+ if (!confirm('Delete this conversation?')) return;
+ if (NATIVE) { B.deleteSession(s.id); renderHistory(B.recents()); }
+ };
+ box.appendChild(row);
+ });
+}
+function isToday(d){
+ const n = new Date();
+ return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+
+ /* Repaints the conversation from scratch. Shared by the `session` event
+ (user switched threads) and syncFromStore() (the voice loop wrote to the
+ database behind our back). */
+ function renderSession(msgs){
+ clearT();
+ hideStatus();
+ clearTranscript();
+ streamEnd();
+ chat.innerHTML = '';
+ if (msgs && msgs.length){
+ chat.classList.add('talk');
+ msgs.forEach(m => bubble(m.content, m.role === 'user' ? 'me' : 'bot'));
+ scroll();
+ } else {
+ chat.classList.remove('talk');
+ }
+ }
+
+ /* A voice-loop turn is persisted natively (the STT text and the model's
+ reply), but the chat DOM never hears about it so leaving the loop used
+ to dump the whole conversation back to the welcome screen. */
+ function syncFromStore(){
+ if (!NATIVE) return;
+ renderSession(B.currentMessages());
+ }
+/* NATIVE BRIDGE 
+ When running inside the Android app the real engines drive the UI.
+ Events pushed from Kotlin: ready / state / transcript / reply / modelReady / error */
+if (NATIVE) {
+ B.on('state', p => {
+ const s = p && p.state;
+ // interrupt button is live while generating or talking
+ setBusy(s === 'thinking' || s === 'speaking');
+
+ // A loop-mode state that arrives after the loop ended is stale native
+ // callbacks land on their own threads and can outlive the session. Ignore
+ // them rather than letting them re-enter loop UI or strand a status pill.
+ const loopState = (s === 'listening' || s === 'speaking');
+ if (loopState && !loopOn) {
+ leaveLoopUI();
+ return;
+ }
+
+ if (s === 'listening') { setState('listen'); phone.classList.add('loop'); showStatus('listening'); }
+ else if (s === 'thinking'){ setState('think'); showStatus('thinking'); }
+ else if (s === 'speaking'){ setState('speak'); showStatus('speaking'); }
+ else if (s === 'loading') {
+ // model load takes several seconds on a 4GB phone say so instead of
+ // leaving the user staring at a dead input
+ setState('idle');
+ showStatus('loading model');
+ }
+ else if (s === 'needPermission') { leaveLoopUI(); }
+ else { /* idle */
+ // the loop can finish on its own; restore the chat layout
+ if (loopOn) leaveLoopUI();
+ else { setState('idle'); hideStatus(); phone.classList.remove('loop'); }
+ }
+ });
+
+ B.on('notice', p => {
+ const n = document.createElement('div');
+ n.className = 'notice';
+ n.textContent = (p && p.message) ? p.message : 'Notice';
+ chat.classList.add('talk'); chat.appendChild(n); scroll();
+ });
+
+ B.on('transcript', p => {
+ if (p.final) {
+ const t = p.final.trim();
+ if (t) {
+ // the dashed provisional bubble becomes the real one no duplicate
+ if (txEl) { txEl.firstChild.textContent = t; txEl.firstChild.className = 'bubble'; txEl = null; }
+ else bubble(t, 'me');
+ scroll();
+ } else {
+ clearTranscript();
+ }
+ } else if (p.partial) {
+ showTranscript(p.partial);
+ }
+ });
+
+ B.on('reply', p => {
+ const t = (p && typeof p.text === 'string') ? p.text : '';
+ if (t) {
+ // first token the reply takes over the line under the EQ
+ hideStatus();
+ settlePreview();
+ streamUpdate(t);
+ }
+ if (p && p.done) {
+ streamEnd(t);
+ hideStatus();
+ settlePreview();
+ // generation is over retract the interrupt button even if no `state`
+ // event follows (e.g. the model returned nothing and never spoke)
+ setBusy(false);
+ setState('idle');
+ if (!loopOn) phone.classList.remove('loop');
+ }
+ });
+
+ B.on('error', p => {
+ console.error('[Delish]', p.message);
+ stopLoop();
+ const n=document.createElement('div');
+ n.className='notice';
+ n.textContent='Error: '+(p.message||'unknown');
+ chat.appendChild(n); scroll();
+ });
+
+
+ B.on('session', p => {
+ stopLoopIfRunning();
+ renderSession((p && Array.isArray(p.messages)) ? p.messages : []);
+ if (p && p.recents) renderHistory(p.recents);
+ });
+
+ B.on('recents', list => renderHistory(Array.isArray(list) ? list : []));
+
+ function stopLoopIfRunning(){ if (loopOn) stopLoop(); }
+
+ B.on('ready', p => {
+ setModelState(!(p && p.hasModel === false));
+ if (p && p.modelLoaded) setState('idle');
+ });
+
+ B.on('modelReady', () => {
+ hideStatus();
+ setModelState(true);
+ setState('idle');
+ });
+
+ // Native pushes `ready` on every page load; this is the safety net for the
+ // case where the event arrives before this handler is attached.
+ if (NATIVE) setModelState(B.engineInfo().hasModel === true);
+
+ // Expose a single entry point the UI uses when sending a message.
+ window.__delishSend = function (text) {
+ if (B.sendMessage(text)) return true; // handled natively
+ return false; // caller runs the demo reply
+ };
+ console.log('[Delish] engine warm =', B.engineInfo().modelReady);
+}
+
+/* interrupt / barge-in */
+function setBusy(on){
+ dock.classList.toggle('busy', !!on);
+ $('stopBtn').classList.toggle('on', !!on);
+ if (on && NATIVE) { $('closeBtn').style.display = 'none'; }
+ else { $('closeBtn').style.display = ''; }
+}
+$('stopBtn').onclick = () => {
+ if (NATIVE) B.interrupt();
+ streamEnd();
+ hideStatus();
+ setBusy(false);
+ setState('idle');
+};
+
+/* STREAMING REPLY BUBBLE 
+ One persistent node for the whole generation. Never recreated mid-stream and
+ never dropped on done the final text has to stay on screen. */
+let streamEl = null;
+
+function streamStart(){
+ if (streamEl) return streamEl;
+ chat.classList.add('talk');
+ const row = document.createElement('div'); row.className = 'row bot';
+ const b = document.createElement('div'); b.className = 'bubble';
+ b.textContent = '';
+ row.appendChild(b);
+ chat.appendChild(row);
+ streamEl = b;
+ scroll();
+ return streamEl;
+}
+function streamUpdate(text){
+ const el = streamStart();
+ el.textContent = text;
+ scroll();
+}
+function streamEnd(finalText){
+ if (!streamEl) return;
+ if (finalText) streamEl.textContent = finalText;
+ // interrupted or empty -> don't leave a blank bubble sitting on screen
+ if (!streamEl.textContent.trim()) streamEl.parentNode.removeChild(streamEl);
+ streamEl = null;
+}
+
+function ask(text){
+ if(!text.trim())return;
+ field.value='';field.style.height='auto';
+ if(loopOn) toggleChatPreview(true);
+
+ bubble(text,'me');
+
+ // No model installed -> say so once, then still answer so the UI feels alive.
+ // (Downloading itself happens in onboarding, before this page is reachable.)
+ if (NEEDS_MODEL) {
+ const n=document.createElement('div');
+ n.className='notice';
+ n.textContent='No AI model yet. Reopen the app to finish setup. Showing demo replies for now.';
+ chat.classList.add('talk'); chat.appendChild(n); scroll();
+ }
+
+ if (NATIVE && MODEL_OK) { streamEnd(); B.sendMessage(text); return; } // real LLM
+
+ streamEnd();
+ showStatus('thinking');
+ const reply=REPLIES[Math.floor(Math.random()*REPLIES.length)];
+ later(()=>{ hideStatus(); bubble(reply,'bot'); },900);
+}
+field.addEventListener('input',()=>{
+ field.style.height='auto';
+ field.style.height=Math.min(field.scrollHeight,86)+'px';
+});
+field.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask(field.value)}});
+$('send').onclick=()=>ask(field.value);
+</script>
+</body>
+</html>

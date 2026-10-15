@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+        The exact EQ mark from the chat UI / splash screen, centred inside the
+        adaptive-icon safe zone (72x72 of 108, 66dp circular mask).
+
+        Source mark  : bars x 6.9..33.1 (w 26.2), y 9.2..30.8 (h 21.6), centre (20,20)
+        scale 2.3    -> 60.3 x 49.7
+        translate 8  -> centred on (54,54), lands at x 23.9..84.1, y 29.2..78.8
+    -->
+    <group
+        android:translateX="8"
+        android:translateY="8"
+        android:scaleX="2.3"
+        android:scaleY="2.3">
+        <path
+            android:fillColor="#FF04231C"
+            android:pathData="M6.9,17h3.4v6h-3.4z" />
+        <path
+            android:fillColor="#FF04231C"
+            android:pathData="M12.6,13.4h3.4v13.2h-3.4z" />
+        <path
+            android:fillColor="#FF04231C"
+            android:pathData="M18.3,9.2h3.4v21.6h-3.4z" />
+        <path
+            android:fillColor="#FF04231C"
+            android:pathData="M24.0,13.4h3.4v13.2h-3.4z" />
+        <path
+            android:fillColor="#FF04231C"
+            android:pathData="M29.7,17h3.4v6h-3.4z" />
+    </group>
+</vector>
