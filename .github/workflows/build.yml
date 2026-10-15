@@ -31,24 +31,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ubuntu-24.04 ships an Android SDK but does NOT put cmdline-tools on PATH,
-      # so a bare `sdkmanager` call dies with exit 127. Locate it explicitly and
-      # fail loudly here rather than letting a missing tool surface later as a
-      # confusing Gradle error.
-      - name: Locate cmdline-tools
+      # ubuntu-24.04 ships an Android SDK at /usr/local/lib/android/sdk but does
+      # NOT put cmdline-tools on PATH, so a bare `sdkmanager` call exits 127.
+      # Locate it explicitly and fail loudly here rather than letting a missing
+      # tool surface later as a confusing Gradle error.
+      - name: Set up Android SDK
         run: |
           set -euo pipefail
+          sdk_root=""
           for root in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" /usr/local/lib/android/sdk; do
             [ -n "$root" ] || continue
             if [ -x "$root/cmdline-tools/latest/bin/sdkmanager" ]; then
-              echo "Found sdkmanager under $root"
-              echo "$root" >> "$GITHUB_ENV"
-              echo "$root/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-              exit 0
+              sdk_root="$root"
+              break
             fi
           done
-          echo "::error::sdkmanager not found; searched ANDROID_SDK_ROOT, ANDROID_HOME, /usr/local/lib/android/sdk"
-          exit 1
+          if [ -z "$sdk_root" ]; then
+            echo "::error::sdkmanager not found; searched ANDROID_SDK_ROOT, ANDROID_HOME, /usr/local/lib/android/sdk"
+            exit 1
+          fi
+          echo "Using Android SDK at $sdk_root"
+          # GITHUB_ENV requires KEY=VALUE. Writing a bare path here is rejected
+          # with "Invalid format" and fails the step even though the path is
+          # correct. GITHUB_PATH, by contrast, does take bare paths.
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "$sdk_root/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       # No `|| true` here. An earlier version had it, which silently turned
       # "sdkmanager: command not found" into a green step and hid the real fault.
