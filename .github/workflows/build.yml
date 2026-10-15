@@ -31,10 +31,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      # Licences have to be accepted before sdkmanager will install anything.
+      # ubuntu-latest already ships an Android SDK with cmdline-tools on PATH, so
+      # android-actions/setup-android is not needed. That action has been the
+      # flaky step; using sdkmanager directly removes it from the dependency chain.
       - name: Accept SDK licences
         run: |
           yes | sdkmanager --licenses > /dev/null || true
